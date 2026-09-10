@@ -16,8 +16,11 @@ For backend-only debugging:
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+pip install -e ".[dev]" -i https://mirrors.aliyun.com/pypi/simple/
 cp .env.example .env
+
 .venv/bin/uvicorn single_port_app:app --host 127.0.0.1 --port 5173
+uvicorn single_port_app:app --host 127.0.0.1 --port 8000
 ```
 
 Swagger UI: `http://localhost:5173/docs`
