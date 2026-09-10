@@ -7,6 +7,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+
+  console.log(env);
+
   return {
     plugins: [react(), tailwindcss(), svgr()],
     resolve: {
