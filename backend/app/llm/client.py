@@ -5,6 +5,7 @@ from collections.abc import Iterator, Mapping
 import copy
 import hashlib
 import json
+import logging
 import math
 import re
 from typing import Any
@@ -37,6 +38,8 @@ from app.llm.stage_protocol import (
 )
 from app.observability.spans import current_llm_operation, llm_span_attributes, start_llm_call
 from app.security.encryption import decrypt_secret
+
+logger = logging.getLogger(__name__)
 
 
 class LLMError(Exception):
@@ -561,6 +564,22 @@ class LLMClient:
                 previous_defer = getattr(self, "_defer_stage_recording", False)
                 self._defer_stage_recording = True
                 try:
+                    logger.info(
+                        "generate_json request (attempt=%s/%s, model=%s): %s",
+                        attempt + 1,
+                        JSON_REPAIR_ATTEMPTS + 1,
+                        self.model,
+                        json.dumps(
+                            {
+                                "system_prompt": system_prompt,
+                                "user_payload": _observable_value(next_payload),
+                                "json_mode_supported": json_mode_supported,
+                                "accept_json_sequence": accept_json_sequence,
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                        ),
+                    )
                     text = self._generate_json_candidate(
                         system_prompt, next_payload, json_mode_supported, cancellation
                     )
@@ -569,9 +588,22 @@ class LLMClient:
                         text = self.generate_text(system_prompt, next_payload)
                 finally:
                     self._defer_stage_recording = previous_defer
+            logger.info(
+                "generate_json response (attempt=%s/%s, model=%s): %s",
+                attempt + 1,
+                JSON_REPAIR_ATTEMPTS + 1,
+                self.model,
+                text,
+            )
             outputs.append(text)
             try:
                 parsed = _loads_llm_json(text)
+                logger.info(
+                    "generate_json parsed successfully (attempt=%s/%s): %s",
+                    attempt + 1,
+                    JSON_REPAIR_ATTEMPTS + 1,
+                    json.dumps(parsed, ensure_ascii=False, default=str),
+                )
                 _record_stage_exchange(
                     next_payload,
                     text,
